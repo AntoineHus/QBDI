@@ -1,7 +1,7 @@
 /*
  * This file is part of QBDI.
  *
- * Copyright 2017 - 2022 Quarkslab
+ * Copyright 2017 - 2023 Quarkslab
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -185,6 +185,7 @@ WritePC::generate(const Patch &patch, TempManager &temp_manager) const {
     case llvm::ARM::MOVi16:
     case llvm::ARM::MOVi:
     case llvm::ARM::MOVr:
+    case llvm::ARM::MOVPCLR:
     case llvm::ARM::MOVsi:
     case llvm::ARM::MVNi:
     case llvm::ARM::MVNr:
@@ -351,6 +352,7 @@ SetExchange::generate(const Patch &patch, TempManager &temp_manager) const {
     case llvm::ARM::MOVi16:
     case llvm::ARM::MOVi:
     case llvm::ARM::MOVr:
+    case llvm::ARM::MOVPCLR:
     case llvm::ARM::MOVsi:
     case llvm::ARM::MVNi:
     case llvm::ARM::MVNr:

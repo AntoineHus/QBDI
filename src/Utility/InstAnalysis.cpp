@@ -1,7 +1,7 @@
 /*
  * This file is part of QBDI.
  *
- * Copyright 2017 - 2022 Quarkslab
+ * Copyright 2017 - 2023 Quarkslab
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -552,14 +552,14 @@ const InstAnalysis *analyzeInstMetadata(const InstMetadata &instMetadata,
     int ret = dladdr((void *)instAnalysis->address, &info);
     if (ret != 0) {
       if (info.dli_sname) {
-        instAnalysis->symbol = info.dli_sname;
+        instAnalysis->symbolName = info.dli_sname;
         instAnalysis->symbolOffset =
             instAnalysis->address - (rword)info.dli_saddr;
       }
       if (info.dli_fname) {
         // dirty basename, but thead safe
         if ((ptr = strrchr(info.dli_fname, '/')) != nullptr) {
-          instAnalysis->module = ptr + 1;
+          instAnalysis->moduleName = ptr + 1;
         }
       }
     }

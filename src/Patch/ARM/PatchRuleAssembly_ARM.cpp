@@ -1,7 +1,7 @@
 /*
  * This file is part of QBDI.
  *
- * Copyright 2017 - 2022 Quarkslab
+ * Copyright 2017 - 2023 Quarkslab
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -119,19 +119,21 @@ std::vector<PatchRule> getARMPatchRules(Options opts) {
   // Warning: All instructions can be conditionnal, Each patchRule must keep the
   // conditionnal behavior
 
-  /* Rule #0: BX lr without condition
+  /* Rule #0: BX lr | mov pc, lr without condition
    *
    *  str lr, <offset PC>
    *  setExchange
    */
-  rules.emplace_back(
-      And::unique(conv_unique<PatchCondition>(OpIs::unique(llvm::ARM::BX_RET),
-                                              Not::unique(HasCond::unique()))),
-      conv_unique<PatchGenerator>(
-          SaveReg::unique(Reg(REG_LR), Offset(Reg(REG_PC))),
-          SetExchange::unique(Temp(0))));
+  rules.emplace_back(And::unique(conv_unique<PatchCondition>(
+                         Or::unique(conv_unique<PatchCondition>(
+                             OpIs::unique(llvm::ARM::BX_RET),
+                             OpIs::unique(llvm::ARM::MOVPCLR))),
+                         Not::unique(HasCond::unique()))),
+                     conv_unique<PatchGenerator>(
+                         SaveReg::unique(Reg(REG_LR), Offset(Reg(REG_PC))),
+                         SetExchange::unique(Temp(0))));
 
-  /* Rule #1: BX lr with condition
+  /* Rule #1: BX lr | mov pc, lr with condition
    *
    *  mov temp0, <PC-4>
    *  movcc temp0, lr
@@ -139,8 +141,11 @@ std::vector<PatchRule> getARMPatchRules(Options opts) {
    *  setExchange
    */
   rules.emplace_back(
-      And::unique(conv_unique<PatchCondition>(OpIs::unique(llvm::ARM::BX_RET),
-                                              HasCond::unique())),
+      And::unique(
+          conv_unique<PatchCondition>(Or::unique(conv_unique<PatchCondition>(
+                                          OpIs::unique(llvm::ARM::BX_RET),
+                                          OpIs::unique(llvm::ARM::MOVPCLR))),
+                                      HasCond::unique())),
       conv_unique<PatchGenerator>(
           GetNextInstAddr::unique(Temp(0), /* keepCond */ false),
           CopyRegCC::unique(Temp(0), Reg(REG_LR)), WritePC::unique(Temp(0)),

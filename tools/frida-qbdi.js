@@ -1,7 +1,7 @@
 /*
  * This file is part of QBDI.
  *
- * Copyright 2017 - 2022 Quarkslab
+ * Copyright 2017 - 2023 Quarkslab
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@
  *
  */
 export var QBDI_MAJOR = 0;
-export var QBDI_MINOR = 9;
+export var QBDI_MINOR = 10;
 export var QBDI_PATCH = 1;
 /**
  * Minimum version of QBDI to use Frida bindings
@@ -288,6 +288,8 @@ var QBDI_C = Object.freeze({
     run: _qbdibinder.bind('qbdi_run', 'uchar', ['pointer', rword, rword]),
     call: _qbdibinder.bind('qbdi_call', 'uchar', ['pointer', 'pointer', rword, 'uint32',
                            rword, rword, rword, rword, rword, rword, rword, rword, rword, rword]),
+    switchStackAndCall: _qbdibinder.bind('qbdi_switchStackAndCall', 'uchar', ['pointer', 'pointer', rword, 'uint32', 'uint32',
+                           rword, rword, rword, rword, rword, rword, rword, rword, rword, rword]),
     getGPRState: _qbdibinder.bind('qbdi_getGPRState', 'pointer', ['pointer']),
     getFPRState: _qbdibinder.bind('qbdi_getFPRState', 'pointer', ['pointer']),
     setGPRState: _qbdibinder.bind('qbdi_setGPRState', 'void', ['pointer', 'pointer']),
@@ -344,7 +346,7 @@ if (Process.arch === 'x64') {
     var REG_PC_ = "PC";
     var REG_SP_ = "SP";
 } else if (Process.arch === 'arm') {
-    var GPR_NAMES_ = ["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R12","FP","SP","LR","PC","CPSR"];
+    var GPR_NAMES_ = ["R0","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","SP","LR","PC","CPSR"];
     var REG_RETURN_ = "R0";
     var REG_PC_ = "PC";
     var REG_SP_ = "SP";
@@ -1715,10 +1717,11 @@ export class VM {
      * Example:
      *       >>> var vm = new VM();
      *       >>> var state = vm.getGPRState();
-     *       >>> vm.allocateVirtualStack(state, 0x1000000);
+     *       >>> var stackTopPtr = vm.allocateVirtualStack(state, 0x1000000);
      *       >>> var aFunction = Module.findExportByName(null, "Secret");
      *       >>> vm.addInstrumentedModuleFromAddr(aFunction);
      *       >>> vm.call(aFunction, [42]);
+     *       >>> vm.alignedFree(stackTopPtr);
      *
      * @param {String|Number}           address function address (or Frida ``NativePointer``).
      * @param {StringArray|NumberArray} [args]  optional list of arguments
@@ -1739,6 +1742,43 @@ export class VM {
         return _call.apply(null, fargs[1]);
     }
 
+    /**
+     * Call a function by its address (or through a Frida ``NativePointer``).
+     * QBDI will allocate his one stack to run, while the instrumented code will
+     * use the top of the current stack.
+     *
+     * Arguments can be provided, but their types need to be compatible
+     * with the ``.toRword()`` interface (like ``NativePointer`` or ``UInt64``).
+     *
+     * Example:
+     *       >>> var vm = new VM();
+     *       >>> var state = vm.getGPRState();
+     *       >>> var aFunction = Module.findExportByName(null, "Secret");
+     *       >>> vm.addInstrumentedModuleFromAddr(aFunction);
+     *       >>> vm.switchStackAndCall(aFunction, [42]);
+     *
+     * @param {String|Number}           address function address (or Frida ``NativePointer``).
+     * @param {StringArray|NumberArray} [args]  optional list of arguments
+     * @param {String|Number}           stack size for the engine.
+     */
+    switchStackAndCall(address, args, stackSize) {
+        if (stackSize === null || stackSize === undefined) {
+            stackSize = 0x20000;
+        }
+        address = address.toRword();
+        var fargs = this._formatVAArgs(args);
+        var vm = this.#vm;
+        // Use this weird construction to work around a bug in the duktape runtime
+        var _scall = function(a, b, c, d, e, f, g, h, i, j) {
+            var retPtr = Memory.alloc(Process.pointerSize);
+            var res = QBDI_C.switchStackAndCall(vm, retPtr, address, stackSize, fargs[0], a, b, c, d, e, f, g, h, i, j);
+            if (res == false) {
+                throw new EvalError('Execution failed');
+            }
+            return ptr(Memory.readRword(retPtr));
+        }
+        return _scall.apply(null, fargs[1]);
+    }
 
     ////////////////////
     // private method //
@@ -2000,19 +2040,21 @@ export class VM {
         p = ptr.add(this.#instAnalysisStructDesc.offsets[19]);
         var symbolPtr = Memory.readPointer(p);
         if (!symbolPtr.isNull()) {
-            analysis.symbol = Memory.readCString(symbolPtr);
+            analysis.symbolName = Memory.readCString(symbolPtr);
         } else {
-            analysis.symbol = "";
+            analysis.symbolName = "";
         }
+        analysis.symbol = analysis.symbolName; // deprecated Name
         p = ptr.add(this.#instAnalysisStructDesc.offsets[20]);
         analysis.symbolOffset = Memory.readU32(p);
         p = ptr.add(this.#instAnalysisStructDesc.offsets[21]);
         var modulePtr = Memory.readPointer(p);
         if (!modulePtr.isNull()) {
-            analysis.module = Memory.readCString(modulePtr);
+            analysis.moduleName = Memory.readCString(modulePtr);
         } else {
-            analysis.module = "";
+            analysis.moduleName = "";
         }
+        analysis.module = analysis.moduleName; // deprecated Name
         p = ptr.add(this.#instAnalysisStructDesc.offsets[22]);
         analysis.cpuMode = Memory.readU8(p);
         Object.freeze(analysis);

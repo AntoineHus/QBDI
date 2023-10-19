@@ -1,8 +1,32 @@
 CHANGELOG
 =========
 
-Next Release
-------------
+Next Release (0.10.1)
+---------------------
+
+* Fix ARM instrumentation for 'mov pc, lr' (`#241 <https://github.com/QBDI/QBDI/pull/241>`__)
+* Add switchStackAndCall API (`#245 <https://github.com/QBDI/QBDI/pull/245>`__)
+* Rename ``QBDI::InstAnalysis::module`` and ``QBDI::InstAnalysis::symbol`` to
+  ``QBDI::InstAnalysis::moduleName`` and ``QBDI::InstAnalysis::symbolName``. The
+  same changed applied in C, C++, Python and JS API, but Python and JS API
+  deprecated but still support the previous name.
+
+Version 0.10.0
+--------------
+
+2023-01-26 QBDI Team <qbdi@quarkslab.com>
+
+* Fix Ubuntu package (`#217 <https://github.com/QBDI/QBDI/pull/217>`__)
+* Support ARMv7 and AArch64 architecture (`#222 <https://github.com/QBDI/QBDI/pull/222>`__)
+* Support python 3.11 (`#222 <https://github.com/QBDI/QBDI/pull/222>`__)
+* Support Frida >= 15.2 (`#222 <https://github.com/QBDI/QBDI/pull/222>`__ and `#223 <https://github.com/QBDI/QBDI/pull/223>`_)
+
+Internal update:
+
+* Move windows CI to Github Actions (`#222 <https://github.com/QBDI/QBDI/pull/222>`__)
+* Support python build with ``pyproject.toml`` (`#222 <https://github.com/QBDI/QBDI/pull/222>`__)
+* Update LLVM to LLVM15 (`#224 <https://github.com/QBDI/QBDI/pull/224>`_)
+* Add CI for ARMv7 and AArch64 (`#222 <https://github.com/QBDI/QBDI/pull/222>`__ and `#225 <https://github.com/QBDI/QBDI/pull/225>`_)
 
 Version 0.9.0
 -------------
